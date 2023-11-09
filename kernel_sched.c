@@ -128,7 +128,20 @@ void* allocate_thread(size_t size)
 }
 #endif
 
+void initialize_PTCB(int arg,void* args,void (*func)()){
+	PCB* pcb=CURPROC;
+	PTCB* ptcb = (PTCB) malloc(sizeof(PTCB)) ;
+	ptcb->tcb=spawn_thread(pcb,func);
+	ptcb->arg=arg;
+	ptcb->args=args;
+	ptcb->exited=0;
+	ptcb->detached=0;
+	ptcb->exit_cv=COND_INIT;
+	ptcb->refCount=0;
+	rlnode_init(ptcb->ptcb_node,ptcb);
+	//prepei na mpei ki arxikopoiisi gia to task
 
+}
 
 
 /*
@@ -157,6 +170,9 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 
 	/* Set the owner */
 	tcb->owner_pcb = pcb;
+
+	/* Set PTCB owner*/
+	tcb->ptcb=NULL
 
 	/* Initialize the other attributes */
 	tcb->type = NORMAL_THREAD;
