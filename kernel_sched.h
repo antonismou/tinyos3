@@ -103,7 +103,7 @@ typedef struct process_thread_control_block
   TCB* tcb;
 
   Task task;
-  int arg;
+  int argl;
   void* args;
 
   int exitVal;
@@ -117,7 +117,7 @@ typedef struct process_thread_control_block
   rlnode ptcb_node;
 } PTCB;
 
-
+void acquire_PTCB(TCB* tcb, Task task, int argl,void* args);
 
 typedef struct thread_control_block {
 

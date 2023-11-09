@@ -8,10 +8,14 @@
   */
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
-  TCB* tcb;
-  PCB* pcb = CURPROC;
-  
-	return NOTHREAD;
+  PCB* curPCB = CURPROC;
+  TCB* tcb = spawn_thread(curPCB,);
+  //prepei na baloume edo    ^ ena func san to start_main_thread
+  acquire_PTCB(tcb,task,argl,args);
+
+  wakeup(tcb);
+
+  return (Tid_t)tcb->ptcb;
 }
 
 /**
