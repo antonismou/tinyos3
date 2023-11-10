@@ -2,6 +2,7 @@
 #include "tinyos.h"
 #include "kernel_sched.h"
 #include "kernel_proc.h"
+#include "kernel_cc.h"
 
 /** 
   @brief Create a new thread in the current process.
@@ -39,7 +40,22 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   */
 int sys_ThreadDetach(Tid_t tid)
 {
-	return -1;
+  PTCB* ptcb= (PTCB*) tid;//nomizo pos etsi briskoume to tid
+  /*We check if this ptcb is on the list of this pcb 
+  if isn't we return -1
+  also we check if this thread is exited and also we return -1
+  */
+  if(!(rlist_find(&(CURPROC->ptcb_list),ptcb,NULL)) ||
+      !(ptcb->exited)){
+    return -1;
+  }
+  /*else we change the flag detached to true and
+  broadcast all the threads that waitting
+  */
+  ptcb->detached = 1;
+  CondVar* toBroadcast = &(ptcb->exit_cv);
+  kernel_broadcast(toBroadcast);
+	return 1;
 }
 
 /**
