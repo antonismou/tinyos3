@@ -183,6 +183,7 @@ Pid_t sys_Exec(Task call, int argl, void* args)
    */
   if(call != NULL) {
     newproc->main_thread = spawn_thread(newproc, start_main_thread);
+    acquire_PTCB(newproc->main_thread,call,argl,args);
     wakeup(newproc->main_thread);
   }
 
