@@ -219,6 +219,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 
 	/* increase the count of active threads */
 	Mutex_Lock(&active_threads_spinlock);
+	active_threads++;
 	Mutex_Unlock(&active_threads_spinlock);
 
 	return tcb;
@@ -597,10 +598,9 @@ void run_scheduler()
 }
 
 
-TCB initialize_thread(PCB* proc, void (*func)(),Task call, int argl , void* args ){
-	TCB* new_tcb = spawn_thread(newproc, func());
+TCB* initialize_thread(PCB* proc, void (*func)(),Task call, int argl , void* args ){
+	TCB* new_tcb = spawn_thread(proc, func);
 	acquire_PTCB(proc->main_thread,call,argl,args);
-	tcb->owner_pcb->thread_count++;
+	new_tcb->owner_pcb->thread_count++;
 	return new_tcb;
 }
-s

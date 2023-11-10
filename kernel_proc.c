@@ -133,9 +133,9 @@ void start_main_thread()
 
 void start_ptcb_main_thread(){
   int exitval;
-  Task call = cur_thread->main_task;
-  int argl - cur_thread->argl;
-  void* args = cur_thread->args;
+  Task call = cur_thread()->ptcb->task;
+  int argl = cur_thread()->ptcb->argl;
+  void* args = cur_thread()->ptcb->args;
 
   exitval = call(argl, args);
 
@@ -198,8 +198,8 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     the initialization of the PCB.
    */
   if(call != NULL) {
-   
-    wakeup(newproc->main_thread=initialize_thread(newproc,start_main_thread,call,argl,args));
+    newproc->main_thread=initialize_thread(newproc,start_main_thread,call,argl,args);
+    wakeup(newproc->main_thread);
   }
 
 
@@ -323,7 +323,7 @@ void sys_Exit(int exitval)
 
   } 
 
-  sys_ThreadExit(exitval)
+  sys_ThreadExit(exitval);
 
 
 
