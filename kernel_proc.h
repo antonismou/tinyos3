@@ -97,7 +97,7 @@ PCB* get_pcb(Pid_t pid);
   @returns the PID of the process, or NOPROC.
 */
 Pid_t get_pid(PCB* pcb);
-
+void start_ptcb_main_thread();
 /** @} */
 
 #endif
