@@ -157,9 +157,6 @@ void acquire_PTCB(TCB* tcb, Task task, int argl,void* args){
 
 	//add this ptcb to the list of the owner pcb
 	rlist_push_back(&tcb->owner_pcb->ptcb_list, &ptcb->ptcb_node);
-	//we update the counter of the threads in this process
-	tcb->owner_pcb->thread_count++;
-
 }
 
 
@@ -188,6 +185,8 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 {
 	/* The allocated thread size must be a multiple of page size */
 	TCB* tcb = (TCB*)allocate_thread(THREAD_SIZE);
+	//we update the counter of the threads in this process
+	tcb->owner_pcb->thread_count++;
 
 	/* Set the owner */
 	tcb->owner_pcb = pcb;
