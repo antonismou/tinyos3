@@ -185,11 +185,12 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 {
 	/* The allocated thread size must be a multiple of page size */
 	TCB* tcb = (TCB*)allocate_thread(THREAD_SIZE);
-	//we update the counter of the threads in this process
-	tcb->owner_pcb->thread_count++;
 
 	/* Set the owner */
 	tcb->owner_pcb = pcb;
+
+	//we update the counter of the threads in this process
+	tcb->owner_pcb->thread_count++;
 
 	/* Set PTCB owner*/
 	tcb->ptcb=NULL;
@@ -600,7 +601,7 @@ void run_scheduler()
 
 TCB* initialize_thread(PCB* proc, void (*func)(),Task call, int argl , void* args ){
 	TCB* new_tcb = spawn_thread(proc, func);
-	acquire_PTCB(proc->main_thread,call,argl,args);
+	acquire_PTCB(new_tcb,call,argl,args);
 	new_tcb->owner_pcb->thread_count++;
 	return new_tcb;
 }

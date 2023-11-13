@@ -132,15 +132,16 @@ void start_main_thread()
 */
 
 void start_ptcb_main_thread(){
-  int exitval;
-  Task call = cur_thread()->ptcb->task;
-  int argl = cur_thread()->ptcb->argl;
-  void* args = cur_thread()->ptcb->args;
+  if(cur_thread()!=NULL){
+    int exitval;
+    Task call = cur_thread()->ptcb->task;
+    int argl = cur_thread()->ptcb->argl;
+    void* args = cur_thread()->ptcb->args;
 
-  exitval = call(argl, args);
+    exitval = call(argl, args);
 
-  ThreadExit(exitval);
-
+    ThreadExit(exitval);
+  }
 }
 
 
