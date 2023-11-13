@@ -11,7 +11,6 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
   PCB* curPCB = CURPROC;
   TCB* tcb = spawn_thread(curPCB,start_ptcb_main_thread);
-  //prepei na baloume edo    ^ ena func san to start_main_thread
   acquire_PTCB(tcb,task,argl,args);
   curPCB->thread_count++;
 
@@ -65,9 +64,22 @@ int sys_ThreadDetach(Tid_t tid)
   */
 void sys_ThreadExit(int exitval)
 {
+  PTCB* ptcb = cur_thread()->ptcb;
+
   /*
-  needs to do some other things to exit the thread if its not the last 
+    we change exit value of current ptcb to 1 to show that the thread is exited
   */
+  ptcb->exitVal = exitval;
+  ptcb->exited=1;
+
+  kernel_broadcast(&(ptcb->exit_cv));
+  
+  /*
+    decrease the number of threads to the current process
+  */
+  PCB* proc = CURPROC;
+  proc->thread_count--;
+  
 
     /* Reparent any children of the exiting process to the 
        initial task */
