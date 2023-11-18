@@ -599,8 +599,8 @@ void run_scheduler()
 }
 
 
-TCB* initialize_thread(PCB* proc, void (*func)(),Task call, int argl , void* args ){
-	TCB* new_tcb = spawn_thread(proc, func);
+TCB* initialize_thread(TCB* new_tcb,PCB* proc, void (*func)(),Task call, int argl , void* args ){
+	new_tcb = spawn_thread(proc, func);
 	acquire_PTCB(new_tcb,call,argl,args);
 	new_tcb->owner_pcb->thread_count++;
 	return new_tcb;
