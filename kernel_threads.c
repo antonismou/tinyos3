@@ -32,8 +32,60 @@ Tid_t sys_ThreadSelf()
   */
 int sys_ThreadJoin(Tid_t tid, int* exitval)
 {
+  PTCB* ptcb = (PTCB*) tid;
+  PCB* curproc = CURPROC;
 
-	return -1;
+  /* If the tid corresponds to the current thread we exit with return value -1 */
+  if(cur_thread()->ptcb == ptcb){
+    return -1;
+  }
+
+  /* If the tid corresponds to a detached or an exited thread we exit with return value -1 */
+  if(ptcb->detached == 1 || ptcb->exited == 1){ // xreiazetai?
+    return -1;  
+  }
+
+  /* If there is no thread with the given tid in this process we exit with return value -1 */
+  if(rlist_find(&curproc->ptcb_list, ptcb, NULL) == NULL){ // xreiazetai to & ?
+    return -1;
+  }
+
+  /* Increase refcount to know how many TCBs wait for this PTCB to complete
+     in order to continue working */
+  ptcb->refCount++;
+
+  /* Put the current (calling) thread to sleep state until this PTCB exits or detaches */
+  while(ptcb->exited == 0 && ptcb->detached == 0){ // yparxei periptwsi na ginei detached?
+    kernel_wait(&(ptcb->exit_cv), SCHED_USER);
+  }  
+
+  // xreiazontai ta broadcasts i ta kanoun oi exit/detach?
+
+  /* decrease refcount */
+  ptcb->refCount--;
+
+  /* Check if the PTCB beacame detached while the current thread was sleeping. 
+     In this case we wake up the sleeping thread and exit with return value -1 */
+  if (ptcb->detached == 1){
+    //kernel_broadcast(&ptcb->exit_cv);
+    return -1;
+  }
+
+  // elegxos null?
+
+  /* Save PTCB's exit status in *exitval */\
+    
+  *exitval = ptcb->exitVal; 
+ 
+  // 0 i 1
+  
+  /* If everything is successfull we free up the memory used for the joined thread (PTCB) */ 
+  if(ptcb->refCount == 0){ // When the refcount is 0 we must remove the ptcb
+    rlist_remove(&(ptcb->ptcb_node)); 
+    free(ptcb);  
+  }
+
+	return 0;
 }
 
 /**
