@@ -600,7 +600,6 @@ void run_scheduler()
 
 /*
 	initialize_thread()
-
 	This function initialize a thread and adds it in the current proccess
 	Its used to Exec to initialize the main_thread and in Create_thread to initialize every new thread
 */
