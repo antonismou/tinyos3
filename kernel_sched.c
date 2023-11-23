@@ -150,7 +150,7 @@ void acquire_PTCB(TCB* tcb, Task task, int argl,void* args){
 	ptcb->exitVal = 0;
 
 	ptcb->exit_cv = COND_INIT;
-	ptcb->refCount = 0;
+	ptcb->refCount = 1;
 	
 	//initialiaze the node 
 	rlnode_init(&ptcb->ptcb_node,ptcb);
@@ -598,14 +598,10 @@ void run_scheduler()
 	cpu_interrupt_handler(ICI, NULL);
 }
 
-/*
-	initialize_thread()
-	This function initialize a thread and adds it in the current proccess
-	Its used to Exec to initialize the main_thread and in Create_thread to initialize every new thread
-*/
-TCB* initialize_thread(TCB* new_tcb ,PCB* proc, void (*func)(),Task task, int argl , void* args ){
+
+TCB* initialize_thread(TCB* new_tcb,PCB* proc, void (*func)(),Task call, int argl , void* args ){
 	new_tcb = spawn_thread(proc, func);
-	acquire_PTCB(new_tcb,task,argl,args);
-	proc->thread_count++;
+	acquire_PTCB(new_tcb,call,argl,args);
+	new_tcb->owner_pcb->thread_count++;
 	return new_tcb;
 }

@@ -10,12 +10,13 @@
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
   PCB* curPCB = CURPROC;
-  TCB* tcb;
-  tcb = initialize_thread(tcb,curPCB,start_ptcb_main_thread,task,argl,args);
+  TCB* tcb = spawn_thread(curPCB,start_ptcb_main_thread);
+  acquire_PTCB(tcb,task,argl,args);
+  curPCB->thread_count++;
 
   wakeup(tcb);
 
-  return (Tid_t)tcb->ptcb;
+  return (Tid_t) (tcb->ptcb);
 }
 
 /**
@@ -34,61 +35,58 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   PTCB* ptcb = (PTCB*) tid;
   PCB* curproc = CURPROC;
 
-  /* If the PTCB is NULL we exit with return value -1 */
-  if(ptcb==NULL){ // xreiazetai ontws?
-    return -1;
-  }
-
   /* If the tid corresponds to the current thread we exit with return value -1 */
   if(cur_thread()->ptcb == ptcb){
     return -1;
   }
 
-  /* If the tid corresponds to a detached thread we exit with return value -1 */
-  if(ptcb->detached == 1){ 
+  /* If the tid corresponds to a detached or an exited thread we exit with return value -1 */
+  if(ptcb->detached == 1 || ptcb->exited == 1){ // xreiazetai?
     return -1;  
   }
 
   /* If there is no thread with the given tid in this process we exit with return value -1 */
-  if(rlist_find(&curproc->ptcb_list, ptcb, NULL) == NULL ){ // xreiazetai to & ?
+  if(rlist_find(&curproc->ptcb_list, ptcb, NULL) == NULL){ // xreiazetai to & ?
     return -1;
   }
 
   /* Increase refcount to know how many TCBs wait for this PTCB to complete
      in order to continue working */
-  (ptcb->refCount) ++;
+  ptcb->refCount++;
 
   /* Put the current (calling) thread to sleep state until this PTCB exits or detaches */
-  while( (ptcb->exited == 0) && (ptcb->detached == 0) ){ // yparxei periptwsi na ginei detached?
+  while(ptcb->exited == 0 && ptcb->detached == 0){ // yparxei periptwsi na ginei detached?
     kernel_wait(&(ptcb->exit_cv), SCHED_USER);
   }  
 
+  // xreiazontai ta broadcasts i ta kanoun oi exit/detach?
+
   /* decrease refcount */
-  (ptcb->refCount) --;
+  ptcb->refCount--;
 
   /* Check if the PTCB beacame detached while the current thread was sleeping. 
      In this case we wake up the sleeping thread and exit with return value -1 */
-  if(ptcb->detached == 0){
+  if (ptcb->detached == 1){
     //kernel_broadcast(&ptcb->exit_cv);
     return -1;
   }
 
-  /* Save PTCB's exit status in *exitval only if exitval isn't NULL */
-  if(exitval != NULL){  
-    *exitval = ptcb->exitVal; 
-  }
+  // elegxos null?
 
+  /* Save PTCB's exit status in *exitval */\
+    
+  *exitval = ptcb->exitVal; 
+ 
   // 0 i 1
   
   /* If everything is successfull we free up the memory used for the joined thread (PTCB) */ 
   if(ptcb->refCount == 0){ // When the refcount is 0 we must remove the ptcb
-    rlist_remove( &(ptcb->ptcb_node) ); 
+    rlist_remove(&(ptcb->ptcb_node)); 
     free(ptcb);  
   }
 
 	return 0;
 }
-
 
 /**
   @brief Detach the given thread.
@@ -123,12 +121,12 @@ void sys_ThreadExit(int exitval)
   PTCB* ptcb = cur_thread()->ptcb;
 
   /*
-    we change the value of exited from 0 to 1 from the current ptcb to state that is exited
+    we change exit value of current ptcb to 1 to show that the thread is exited
   */
   ptcb->exitVal = exitval;
   ptcb->exited=1;
 
-  kernel_broadcast(&ptcb->exit_cv);
+  kernel_broadcast(&(ptcb->exit_cv));
   
   /*
     decrease the number of threads to the current process
@@ -137,10 +135,9 @@ void sys_ThreadExit(int exitval)
   proc->thread_count--;
   
 
-    
-  if(proc->thread_count==0){
     /* Reparent any children of the exiting process to the 
        initial task */
+  if(proc->thread_count==0){
     if(get_pid(proc) != 1){
       PCB* initpcb = get_pcb(1);
       while(!is_rlist_empty(& proc->children_list)) {
@@ -192,7 +189,7 @@ void sys_ThreadExit(int exitval)
       }
     }
 
-    /* Disconnect main_thread */
+    /* Disconnect my main_thread */
     proc->main_thread = NULL;
 
     /* Now, mark the process as exited. */
