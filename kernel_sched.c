@@ -128,6 +128,37 @@ void* allocate_thread(size_t size)
 }
 #endif
 
+/*
+	Use malloc to allovate memmory for the PTCB.
+*/
+void acquire_PTCB(TCB* tcb, Task task, int argl,void* args){
+	//allocate memory for ptcb
+	PTCB* ptcb = (PTCB*) malloc(sizeof(PTCB)) ;
+
+	//add the tcb at ptcb and reversed
+	ptcb->tcb = tcb;
+	tcb->ptcb = ptcb;
+
+	//inisialize this with the paramenters
+	ptcb->task = task;
+	ptcb->argl = argl;
+	ptcb->args = args;
+
+	//inisialize false 
+	ptcb->exited = 0;
+	ptcb->detached = 0;
+	ptcb->exitVal = 0;
+
+	ptcb->exit_cv = COND_INIT;
+	ptcb->refCount = 1;
+	
+	//initialiaze the node 
+	rlnode_init(&ptcb->ptcb_node,ptcb);
+
+	//add this ptcb to the list of the owner pcb
+	rlist_push_back(&tcb->owner_pcb->ptcb_list, &ptcb->ptcb_node);
+}
+
 
 
 
@@ -157,6 +188,12 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 
 	/* Set the owner */
 	tcb->owner_pcb = pcb;
+
+	//we update the counter of the threads in this process
+	//tcb->owner_pcb->thread_count++;
+
+	/* Set PTCB owner*/
+	tcb->ptcb=NULL;
 
 	/* Initialize the other attributes */
 	tcb->type = NORMAL_THREAD;
@@ -559,4 +596,12 @@ void run_scheduler()
 	assert(CURTHREAD == &CURCORE.idle_thread);
 	cpu_interrupt_handler(ALARM, NULL);
 	cpu_interrupt_handler(ICI, NULL);
+}
+
+
+TCB* initialize_thread(TCB* new_tcb,PCB* proc, void (*func)(),Task call, int argl , void* args ){
+	new_tcb = spawn_thread(proc, func);
+	acquire_PTCB(new_tcb,call,argl,args);
+	new_tcb->owner_pcb->thread_count++;
+	return new_tcb;
 }

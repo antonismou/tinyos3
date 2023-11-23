@@ -97,9 +97,33 @@ enum SCHED_CAUSE {
   An object of this type is associated to every thread. In this object
   are stored all the metadata that relate to the thread.
 */
+
+typedef struct process_thread_control_block
+{
+  TCB* tcb;
+
+  Task task;
+  int argl;
+  void* args;
+
+  int exitVal;
+
+  int exited;
+  int detached;
+  CondVar exit_cv;
+
+  int refCount;
+
+  rlnode ptcb_node;
+} PTCB;
+TCB* initialize_thread(TCB* new_tcb,PCB* proc, void (*func)(),Task call, int argl , void* args );
+void acquire_PTCB(TCB* tcb, Task task, int argl,void* args);
+
 typedef struct thread_control_block {
 
 	PCB* owner_pcb; /**< @brief This is null for a free TCB */
+
+  PTCB* ptcb;
 
 	cpu_context_t context; /**< @brief The thread context */
 	Thread_type type; /**< @brief The type of thread */
