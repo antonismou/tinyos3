@@ -34,17 +34,24 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   PTCB* ptcb = (PTCB*) tid;
   PCB* curproc = CURPROC;
 
-  /* If there is no thread with the given tid in this process we exit with return value -1 */
-  if(rlist_find(&curproc->ptcb_list, ptcb, NULL) == NULL){ // xreiazetai to & ? NAI
+  /* If the PTCB is NULL we exit with return value -1 */
+  if(ptcb==NULL){ // xreiazetai ontws?
+    return -1;
+  }
 
   /* If the tid corresponds to the current thread we exit with return value -1 */
   if(cur_thread()->ptcb == ptcb){
     return -1;
   }
-    
-  /* If the tid corresponds to a detached or an exited thread we exit with return value -1 */
-  if(ptcb->detached == 1){ // xreiazetai? NAI
+
+  /* If the tid corresponds to a detached thread we exit with return value -1 */
+  if(ptcb->detached == 1){ 
     return -1;  
+  }
+
+  /* If there is no thread with the given tid in this process we exit with return value -1 */
+  if(rlist_find(&curproc->ptcb_list, ptcb, NULL) == NULL ){ // xreiazetai to & ?
+    return -1;
   }
 
   /* Increase refcount to know how many TCBs wait for this PTCB to complete
@@ -71,16 +78,11 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
     *exitval = ptcb->exitVal; 
   }
 
-  /* Save PTCB's exit status in *exitval */
-  if(exitval != NULL){
-    *exitval = ptcb->exitVal;
-  } 
- 
   // 0 i 1
   
   /* If everything is successfull we free up the memory used for the joined thread (PTCB) */ 
-  if(ptcb->refCount == 1){ // When the refcount is 0 we must remove the ptcb
-    rlist_remove(&(ptcb->ptcb_node)); 
+  if(ptcb->refCount == 0){ // When the refcount is 0 we must remove the ptcb
+    rlist_remove( &(ptcb->ptcb_node) ); 
     free(ptcb);  
   }
 
