@@ -81,7 +81,7 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   // 0 i 1
   
   /* If everything is successfull we free up the memory used for the joined thread (PTCB) */ 
-  if(ptcb->refCount == 0){ // When the refcount is 0 we must remove the ptcb
+  if(ptcb->refCount == 1){ // When the refcount is 0 we must remove the ptcb
     rlist_remove( &(ptcb->ptcb_node) ); 
     free(ptcb);  
   }
