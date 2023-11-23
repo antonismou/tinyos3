@@ -190,7 +190,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->owner_pcb = pcb;
 
 	//we update the counter of the threads in this process
-	//tcb->owner_pcb->thread_count++;
+	tcb->owner_pcb->thread_count++;
 
 	/* Set PTCB owner*/
 	tcb->ptcb=NULL;
