@@ -11,6 +11,11 @@
 #include <valgrind/valgrind.h>
 #endif
 
+#define PRIORITY_QUEUES 10 // define number of queues for MLFQ
+#define MAX_YIELD_CALLS 100 //  define max calls of yield to boost threads
+
+int yieldCalls=0; // counter for yield calls 
+
 
 /********************************************
 	
@@ -196,6 +201,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->ptcb=NULL;
 
 	/* Initialize the other attributes */
+	tcb->priority = PRIORITY_QUEUES-1; // initialize priority to the highest queue
 	tcb->type = NORMAL_THREAD;
 	tcb->state = INIT;
 	tcb->phase = CTX_CLEAN;
@@ -262,7 +268,7 @@ void release_TCB(TCB* tcb)
   Both of these structures are protected by @c sched_spinlock.
 */
 
-rlnode SCHED; /* The scheduler queue */
+rlnode SCHED[PRIORITY_QUEUES]; /* The scheduler queues */
 rlnode TIMEOUT_LIST; /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT; /* spinlock for scheduler queue */
 
@@ -305,7 +311,7 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 static void sched_queue_add(TCB* tcb)
 {
 	/* Insert at the end of the scheduling list */
-	rlist_push_back(&SCHED, &tcb->sched_node);
+	rlist_push_back(&SCHED[tcb->priority], &tcb->sched_node);
 
 	/* Restart possibly halted cores */
 	cpu_core_restart_one();
@@ -363,8 +369,20 @@ static void sched_wakeup_expired_timeouts()
 */
 static TCB* sched_queue_select(TCB* current)
 {
+	/* Initialize 'highestPriorityIndex' to the highest priority queue */ 
+    int highestPriorityIndex = PRIORITY_QUEUES - 1;
+
+    /* Iterate through priority queues to find the highest priority non-empty queue */ 
+    for (int i = highestPriorityIndex; i>=0; i--) {
+        if (!is_rlist_empty(&SCHED[i])) {
+            /* Update 'highestPriorityIndex' to the index of the first non-empty queue found */ 
+            highestPriorityIndex = i;
+            break;
+        }
+    }
+
 	/* Get the head of the SCHED list */
-	rlnode* sel = rlist_pop_front(&SCHED);
+	rlnode* sel = rlist_pop_front(&SCHED[highestPriorityIndex]);
 
 	TCB* next_thread = sel->tcb; /* When the list is empty, this is NULL */
 
@@ -440,8 +458,11 @@ void sleep_releasing(Thread_state state, Mutex* mx, enum SCHED_CAUSE cause,
 
 /* This function is the entry point to the scheduler's context switching */
 
-void yield(enum SCHED_CAUSE cause)
+void yield(enum SCHED_CAUSE cause) 
 {
+	/* Increase 'yieldCalls' counter */
+	yieldCalls++;
+
 	/* Reset the timer, so that we are not interrupted by ALARM */
 	TimerDuration remaining = bios_cancel_timer();
 
@@ -464,6 +485,34 @@ void yield(enum SCHED_CAUSE cause)
 	/* Wake up threads whose sleep timeout has expired */
 	sched_wakeup_expired_timeouts();
 
+	/* Change TCB's priority based on argument "cause" */
+	switch (cause)
+	{
+	case SCHED_QUANTUM:
+		if ( current->priority > 0 )
+			current->priority--;
+		break;
+
+	case SCHED_IO:
+		if( current->priority < PRIORITY_QUEUES-1 )
+			current->priority++;
+		break;
+
+	case SCHED_MUTEX:
+		if( current->curr_cause == SCHED_MUTEX && current->last_cause == SCHED_MUTEX && current->priority > 0)
+			current->priority--;
+		break;
+	
+	default:
+		break;
+	}
+
+	/* Every 'MAX_YIELD_CALLS' calls of yield, boost threads*/
+	if(yieldCalls > MAX_YIELD_CALLS){
+		boost();
+		yieldCalls = 0;
+	}
+
 	/* Get next */
 	TCB* next = sched_queue_select(current);
 	assert(next != NULL);
@@ -483,6 +532,20 @@ void yield(enum SCHED_CAUSE cause)
 	   may have passed. Start a new timeslice...
 	  */
 	gain(preempt);
+}
+
+/*
+  Grapse sxolia
+*/
+void boost()
+{
+	for(int i=PRIORITY_QUEUES-2; i>=0; i--){
+		while( !is_rlist_empty(&SCHED[i]) ){
+			rlnode* node = rlist_pop_front(&SCHED[i]);
+			node->tcb->priority ++;
+			rlist_push_back(&SCHED[i+1], node);
+		}
+	}
 }
 
 /*
