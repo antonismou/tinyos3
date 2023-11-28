@@ -14,7 +14,7 @@
 #define PRIORITY_QUEUES 10 // define number of queues for MLFQ
 #define MAX_YIELD_CALLS 100 //  define max calls of yield to boost threads
 
-int yieldCalls=0; // counter for yield calls 
+int yieldCalls; // counter for yield calls 
 
 
 /********************************************
@@ -485,6 +485,12 @@ void yield(enum SCHED_CAUSE cause)
 	/* Wake up threads whose sleep timeout has expired */
 	sched_wakeup_expired_timeouts();
 
+	/* Every 'MAX_YIELD_CALLS' calls of yield, boost threads*/
+	if(yieldCalls > MAX_YIELD_CALLS){
+		boost();
+		yieldCalls = 0;
+	}
+
 	/* Change TCB's priority based on argument "cause" */
 	switch (cause)
 	{
@@ -494,8 +500,15 @@ void yield(enum SCHED_CAUSE cause)
 		break;
 
 	case SCHED_IO:
-		if( current->priority < PRIORITY_QUEUES-1 )
+		if(current->priority == PRIORITY_QUEUES-1){
+			current->priority = PRIORITY_QUEUES-1;
+		}
+		else{
 			current->priority++;
+		}
+
+		/*if( current->priority < PRIORITY_QUEUES-1 )
+			current->priority++;*/
 		break;
 
 	case SCHED_MUTEX:
@@ -507,11 +520,7 @@ void yield(enum SCHED_CAUSE cause)
 		break;
 	}
 
-	/* Every 'MAX_YIELD_CALLS' calls of yield, boost threads*/
-	if(yieldCalls > MAX_YIELD_CALLS){
-		boost();
-		yieldCalls = 0;
-	}
+	
 
 	/* Get next */
 	TCB* next = sched_queue_select(current);
@@ -621,8 +630,13 @@ static void idle_thread()
  */
 void initialize_scheduler()
 {
-	rlnode_init(&SCHED, NULL);
+	for(int i = 0; i < PRIORITY_QUEUES; i++){
+		rlnode_init(&SCHED[i], NULL);
+	}
+
 	rlnode_init(&TIMEOUT_LIST, NULL);
+
+	yieldCalls = 0;
 }
 
 void run_scheduler()

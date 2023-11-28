@@ -138,7 +138,7 @@ typedef struct thread_control_block {
 	TimerDuration its; /**< @brief Initial time-slice for this thread */
 	TimerDuration rts; /**< @brief Remaining time-slice for this thread */
   
-  int priority; // the priority of this thread in the MLFQ
+  int priority; // the priority of this thread in the MLFQ                                                                                      
 
 	enum SCHED_CAUSE curr_cause; /**< @brief The endcause for the current time-slice */
 	enum SCHED_CAUSE last_cause; /**< @brief The endcause for the last time-slice */
@@ -280,6 +280,11 @@ void sleep_releasing(Thread_state newstate, Mutex* mx, enum SCHED_CAUSE cause, T
   it will renew the quantum for the current thread.
  */
 void yield(enum SCHED_CAUSE cause);
+
+/**
+ * grapse sxolia
+*/
+void boost();
 
 /**
   @brief Enter the scheduler.
