@@ -36,7 +36,7 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   PCB* curproc = CURPROC;
 
   /* If there is no thread with the given tid in this process we exit with return value -1 */
-  if(rlist_find(&curproc->ptcb_list, ptcb, NULL) == NULL){ // xreiazetai to & ? NAI
+  if(rlist_find(&curproc->ptcb_list, ptcb, NULL) == NULL){ 
     return -1;
   }
 
@@ -45,8 +45,8 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
     return -1;
   }
 
-  /* If the tid corresponds to a detached or an exited thread we exit with return value -1 */
-  if(ptcb->detached == 1){ // xreiazetai? NAI
+  /* If the tid corresponds to a detached thread we exit with return value -1 */
+  if(ptcb->detached == 1){ 
     return -1;  
   }
 
@@ -55,11 +55,9 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   ptcb->refCount++;
 
   /* Put the current (calling) thread to sleep state until this PTCB exits or detaches */
-  while(ptcb->exited == 0 && ptcb->detached == 0){ // yparxei periptwsi na ginei detached? NAI
+  while(ptcb->exited == 0 && ptcb->detached == 0){ 
     kernel_wait(&(ptcb->exit_cv), SCHED_USER);
   }  
-
-  // xreiazontai ta broadcasts i ta kanoun oi exit/detach?
 
   /* decrease refcount */
   ptcb->refCount--;
@@ -67,21 +65,17 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   /* Check if the PTCB beacame detached while the current thread was sleeping. 
      In this case we wake up the sleeping thread and exit with return value -1 */
   if (ptcb->detached == 1){
-    //kernel_broadcast(&ptcb->exit_cv);
     return -1;
   }
 
-  // elegxos null?
-
-  /* Save PTCB's exit status in *exitval */\
+  /* If 'exitval' isn't NULL, save PTCB's exit status in *(exitval) */
   if(exitval != NULL){
     *exitval = ptcb->exitVal;
   } 
- 
-  // 0 i 1
-  
-  /* If everything is successfull we free up the memory used for the joined thread (PTCB) */ 
-  if(ptcb->refCount == 1){ // When the refcount is 0 we must remove the ptcb
+   
+  /* Check if refCount is 1 in order to delete this PTCB. 
+     If so, remove it from the process's PTCB list and free the associated memory. */
+  if(ptcb->refCount == 1){ 
     rlist_remove( &(ptcb->ptcb_node) ); 
     free(ptcb);  
   }
