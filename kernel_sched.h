@@ -282,7 +282,11 @@ void sleep_releasing(Thread_state newstate, Mutex* mx, enum SCHED_CAUSE cause, T
 void yield(enum SCHED_CAUSE cause);
 
 /**
- * grapse sxolia
+  @brief Boost the priority of all threads except those in the highest priority queue.
+
+  This function is called periodically to boost the priority of threads in lower
+  priority queues. Threads that have been waiting in lower priority queues will
+  be moved to a higher priority queue, giving them a chance to run sooner.
 */
 void boost();
 
