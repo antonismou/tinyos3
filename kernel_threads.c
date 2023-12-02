@@ -13,7 +13,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
   TCB* tcb = spawn_thread(curPCB,start_ptcb_main_thread);
   acquire_PTCB(tcb,task,argl,args);
   curPCB->thread_count++;
-
+  
   wakeup(tcb);
 
   return (Tid_t) (tcb->ptcb);
