@@ -137,6 +137,8 @@ typedef struct thread_control_block {
 	rlnode sched_node; /**< @brief Node to use when queueing in the scheduler queue */
 	TimerDuration its; /**< @brief Initial time-slice for this thread */
 	TimerDuration rts; /**< @brief Remaining time-slice for this thread */
+  
+  int priority; // the priority of this thread in the MLFQ                                                                                      
 
 	enum SCHED_CAUSE curr_cause; /**< @brief The endcause for the current time-slice */
 	enum SCHED_CAUSE last_cause; /**< @brief The endcause for the last time-slice */
@@ -278,6 +280,15 @@ void sleep_releasing(Thread_state newstate, Mutex* mx, enum SCHED_CAUSE cause, T
   it will renew the quantum for the current thread.
  */
 void yield(enum SCHED_CAUSE cause);
+
+/**
+  @brief Boost the priority of all threads except those in the highest priority queue.
+
+  This function is called periodically to boost the priority of threads in lower
+  priority queues. Threads that have been waiting in lower priority queues will
+  be moved to a higher priority queue, giving them a chance to run sooner.
+*/
+void boost();
 
 /**
   @brief Enter the scheduler.

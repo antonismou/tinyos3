@@ -11,6 +11,11 @@
 #include <valgrind/valgrind.h>
 #endif
 
+#define PRIORITY_QUEUES 40 // define number of queues for MLFQ
+#define MAX_YIELD_CALLS 1000 //  define max calls of yield to boost threads
+
+int yieldCalls; // counter for yield calls 
+
 
 /********************************************
 	
@@ -189,13 +194,12 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	/* Set the owner */
 	tcb->owner_pcb = pcb;
 
-	//we update the counter of the threads in this process
-	//tcb->owner_pcb->thread_count++;
 
 	/* Set PTCB owner*/
 	tcb->ptcb=NULL;
 
 	/* Initialize the other attributes */
+	tcb->priority = PRIORITY_QUEUES-1; 
 	tcb->type = NORMAL_THREAD;
 	tcb->state = INIT;
 	tcb->phase = CTX_CLEAN;
@@ -262,7 +266,7 @@ void release_TCB(TCB* tcb)
   Both of these structures are protected by @c sched_spinlock.
 */
 
-rlnode SCHED; /* The scheduler queue */
+rlnode SCHED[PRIORITY_QUEUES]; /* The scheduler queues */
 rlnode TIMEOUT_LIST; /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT; /* spinlock for scheduler queue */
 
@@ -298,14 +302,14 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 }
 
 /*
-  Add TCB to the end of the scheduler list.
+  Add TCB to the end of the MLFQ scheduler list corresponding to its priority.
 
   *** MUST BE CALLED WITH sched_spinlock HELD ***
 */
 static void sched_queue_add(TCB* tcb)
 {
-	/* Insert at the end of the scheduling list */
-	rlist_push_back(&SCHED, &tcb->sched_node);
+	/* Insert at the end of the MLFQ scheduling list for the TCB's priority */
+	rlist_push_back(&SCHED[tcb->priority], &tcb->sched_node);
 
 	/* Restart possibly halted cores */
 	cpu_core_restart_one();
@@ -356,15 +360,27 @@ static void sched_wakeup_expired_timeouts()
 }
 
 /*
-  Remove the head of the scheduler list, if any, and
-  return it. Return NULL if the list is empty.
+  Remove the highest priority TCB from the MLFQ scheduler queues, if any, and
+  return it. Return NULL if all queues are empty.
 
   *** MUST BE CALLED WITH sched_spinlock HELD ***
 */
 static TCB* sched_queue_select(TCB* current)
 {
-	/* Get the head of the SCHED list */
-	rlnode* sel = rlist_pop_front(&SCHED);
+	/* Initialize 'highestPriorityIndex' to the highest priority queue */ 
+    int highestPriorityIndex = PRIORITY_QUEUES - 1;
+
+    /* Iterate through priority queues to find the highest priority non-empty queue */ 
+    for (int i = highestPriorityIndex; i>=0; i--) {
+        if (!is_rlist_empty(&SCHED[i])) {
+            /* Update 'highestPriorityIndex' to the index of the first non-empty queue found */ 
+            highestPriorityIndex = i;
+            break;
+        }
+    }
+
+	/* Get the head of the MLFQ scheduling list with the highest priority */
+	rlnode* sel = rlist_pop_front(&SCHED[highestPriorityIndex]);
 
 	TCB* next_thread = sel->tcb; /* When the list is empty, this is NULL */
 
@@ -440,8 +456,11 @@ void sleep_releasing(Thread_state state, Mutex* mx, enum SCHED_CAUSE cause,
 
 /* This function is the entry point to the scheduler's context switching */
 
-void yield(enum SCHED_CAUSE cause)
+void yield(enum SCHED_CAUSE cause) 
 {
+	/* Increase 'yieldCalls' counter */
+	yieldCalls++;
+
 	/* Reset the timer, so that we are not interrupted by ALARM */
 	TimerDuration remaining = bios_cancel_timer();
 
@@ -464,6 +483,45 @@ void yield(enum SCHED_CAUSE cause)
 	/* Wake up threads whose sleep timeout has expired */
 	sched_wakeup_expired_timeouts();
 
+	/* Every 'MAX_YIELD_CALLS' calls of yield, boost threads to prevent starvation problem */
+	if(yieldCalls > MAX_YIELD_CALLS){ 
+		boost();
+		yieldCalls = 0; // Reset the yield counter after boosting to maintain periodic boosting
+	}
+
+	/* Change TCB's priority based on the reason for yielding (SCHED_CAUSE) */
+	switch (cause)
+	{
+	case SCHED_QUANTUM:
+	    /* If the cause is reaching the time quantum, decrease priority if not already at the minimum */
+		if ( current->priority > 0 )
+			current->priority--;
+		break;
+
+	case SCHED_IO:
+	    /* If the cause is I/O, increase priority if not already at the maximum */
+		if(current->priority == PRIORITY_QUEUES-1){
+			current->priority = PRIORITY_QUEUES-1;
+		}
+		else{
+			current->priority++;
+		}
+		break;
+
+	case SCHED_MUTEX:
+		/* If the current cause is 'SCHED_MUTEX' and the previous cause was also 'SCHED_MUTEX',
+           decrease priority if not already at the minimum */
+		if( current->curr_cause == SCHED_MUTEX && current->last_cause == SCHED_MUTEX && current->priority > 0)
+			current->priority--;
+		break;
+	
+	default:
+	    /* Default case: No priority change for other causes */
+		break;
+	}
+
+	
+
 	/* Get next */
 	TCB* next = sched_queue_select(current);
 	assert(next != NULL);
@@ -483,6 +541,27 @@ void yield(enum SCHED_CAUSE cause)
 	   may have passed. Start a new timeslice...
 	  */
 	gain(preempt);
+}
+
+/*
+  Boost the priority of all threads except those in the highest priority queue.
+
+  This function is called periodically to boost the priority of threads in lower
+  priority queues. Threads that have been waiting in lower priority queues will
+  be moved to a higher priority queue, giving them a chance to run sooner.
+
+*/ 
+void boost()
+{
+	/* Iterate through the priority queues starting from the second highest */
+	for(int i=PRIORITY_QUEUES-2; i>=0; i--){
+		// while the priority queue isn't empty
+		while( !is_rlist_empty(&SCHED[i]) ){
+			rlnode* node = rlist_pop_front(&SCHED[i]); // remove and return the head of the queue
+			node->tcb->priority ++; // boost the priority of the thread
+			rlist_push_back(&SCHED[i+1], node); // insert the node at the tail of the next higher priority queue
+		}
+	}
 }
 
 /*
@@ -554,12 +633,19 @@ static void idle_thread()
 }
 
 /*
-  Initialize the scheduler queue
+  Initialize the Multi-Level Feedback Queue (MLFQ) scheduler queues
  */
 void initialize_scheduler()
 {
-	rlnode_init(&SCHED, NULL);
+	/* Initialize each priority queue in the MLFQ */
+	for(int i = 0; i < PRIORITY_QUEUES; i++){
+		rlnode_init(&SCHED[i], NULL);
+	}
+
 	rlnode_init(&TIMEOUT_LIST, NULL);
+
+    /* Reset the counter for the number of yield calls */
+	yieldCalls = 0;
 }
 
 void run_scheduler()
