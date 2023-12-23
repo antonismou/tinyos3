@@ -10,6 +10,22 @@
 #include "util.h"
 #include "bios.h"
 
+#define PIPE_BUFFER_SIZE 500
+
+typedef struct pipe_control_block
+{
+  FCB *reader, *writer;
+
+  CondVar is_full; //for blocking writer if no space is availabe
+  CondVar is_empty; //for blocking reader until data are available
+
+  int w_position, r_position; //write, read position in buffer
+  int empty_space; //counter to count the empty space of the buffer
+
+  char buffer[PIPE_BUFFER_SIZE]; //bounded cyclic byte buffer
+
+}PIPE_CB;
+
 /**
   @file kernel_dev.h
   @brief Device management.
