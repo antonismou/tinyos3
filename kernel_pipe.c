@@ -3,6 +3,7 @@
 #include "kernel_streams.h"
 #include "kernel_dev.h"
 #include "kernel_pipe.h"
+#include "kernel_sched.h"
 
 file_ops pipe_writer = {
 	.Read = (void*)pipe_error,
@@ -89,8 +90,60 @@ int pipe_read(){
 	return -1;
 }
 
-int pipe_write(){
-	return -1;
+int pipe_write(void* write_index,const char* buf, unsigned int size){
+	PIPE_CB* pipe = (PIPE_CB*) write_index;
+
+	/*
+		checks if the pipe is closed or the writer or reader is closed
+		if one of them is closed returns an error
+	*/
+	if(pipe==NULL||pipe->writer == NULL||pipe->reader==NULL){
+		return -1;
+	}
+
+	unsigned int free_space = pipe->empty_space;
+	
+	/*
+		In this while loop as long as the buffer is full and the reader is open
+		we signal the readers to read some data before we can write again
+	*/
+	 while(free_space == 0 && pipe->reader!=NULL){
+		kernel_wait(&(pipe->is_full), SCHED_PIPE);
+
+		/*
+			After the reader reads some data the  w_position and r_positiot change
+			so we get a new value for free_space
+		*/
+
+		free_space = pipe->empty_space;
+
+	 }
+
+	 /*
+	 	if the buffer has empty space let k be this space 
+		else if the buffer is empty let k equal the maximum buffer size 
+	 */
+	 unsigned int j=0;
+	 if(size>free_space){
+		j = free_space;
+	 } else{
+		j = size;
+	 }
+
+	 //Write opperation
+
+	 for(int i=0; i<j; i++){
+		pipe->buffer[pipe->w_position]= buf[i];
+		pipe->w_position = (pipe->w_position+1)%j;
+		pipe->empty_space--;
+	 }
+
+
+	kernel_broadcast(&pipe->is_full);
+
+
+
+	return j;
 }
 
 /*This is used for when one reader try to write or when a writer try to read*/
