@@ -21,5 +21,5 @@ typedef struct pipe_control_block
 int pipe_reader_close(void* pipe_cb);
 int pipe_writer_close(void* pipe_cb);
 int pipe_read();
-int pipe_write();
+int pipe_write(void* index,const char* buf, unsigned int size);
 int pipe_error();
