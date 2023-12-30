@@ -4,6 +4,7 @@
 #include "kernel_dev.h"
 #include "kernel_pipe.h"
 #include "kernel_sched.h"
+#include "kernel_cc.h"
 
 file_ops pipe_writer = {
 	.Read = (void*)pipe_error,
@@ -68,10 +69,10 @@ int pipe_reader_close(void* pipe_cb){
 }
 
 int pipe_writer_close(void* pipe_cb){
-	if (pipe_cb == NULL){
+	PIPE_CB* pipe = (PIPE_CB*) pipe_cb;
+	if (pipe == NULL){
 		return -1;
 	}
-	PIPE_CB* pipe = (PIPE_CB*) pipe_cb;
 
 
 	pipe->writer = NULL;
@@ -108,7 +109,7 @@ int pipe_write(void* write_index,const char* buf, unsigned int size){
 		we signal the readers to read some data before we can write again
 	*/
 	 while(free_space == 0 && pipe->reader!=NULL){
-		kernel_wait(&(pipe->is_full), SCHED_PIPE);
+		kernel_wait(&pipe->is_full, SCHED_PIPE);
 
 		/*
 			After the reader reads some data the  w_position and r_positiot change
@@ -123,7 +124,7 @@ int pipe_write(void* write_index,const char* buf, unsigned int size){
 	 	if the buffer has empty space let k be this space 
 		else if the buffer is empty let k equal the maximum buffer size 
 	 */
-	 unsigned int j=0;
+	 unsigned int j;
 	 if(size>free_space){
 		j = free_space;
 	 } else{
@@ -133,13 +134,13 @@ int pipe_write(void* write_index,const char* buf, unsigned int size){
 	 //Write opperation
 
 	 for(int i=0; i<j; i++){
-		pipe->buffer[pipe->w_position]= buf[i];
-		pipe->w_position = (pipe->w_position+1)%j;
+		pipe->buffer[pipe->w_position+1]= buf[i];
+		pipe->w_position = (pipe->w_position)%PIPE_BUFFER_SIZE;
 		pipe->empty_space--;
 	 }
 
 
-	kernel_broadcast(&pipe->is_full);
+	kernel_broadcast(&(pipe->is_full));
 
 
 
