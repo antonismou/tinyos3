@@ -1,6 +1,8 @@
 #include "tinyos.h"
 #include "kernel_dev.h"
 
+typedef struct socket_control_block SOCKET_CB;
+
 typedef enum{
     SOCKET_LISTENER,
     SOCKET_UNBOUND,
