@@ -180,7 +180,7 @@ int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 		j = size;
 	 }
 
-	 //Write opperation
+	 //Write operation
 
 	 for(int i=0; i<j; i++){
 		pipe->buffer[pipe->w_position+1]= buf[i];
