@@ -107,7 +107,7 @@ int pipe_read(void* pipecb_t, char *buf, unsigned int n){
 
 	/* In this while-loop as long as the pipe buffer is empty
 	   we signal the writers to write some data before we can read again */
-	while(availableBytesToRead == 0){ // xreiazetai na tsekaroume k writer!= NULL?
+	while(availableBytesToRead == 0 && pipe->writer!=NULL){ 
 
 		/* block reader(s) until data for reading are available in pipe buffer */
 		kernel_wait(&pipe->is_empty, SCHED_PIPE); 
@@ -140,7 +140,6 @@ int pipe_read(void* pipecb_t, char *buf, unsigned int n){
 
 	return numBytesToRead; // Return the number of bytes read
 } 
-
 int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 	PIPE_CB* pipe = (PIPE_CB*) pipecb_t;
 
@@ -181,7 +180,7 @@ int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 		j = size;
 	 }
 
-	 //Write operation
+	 //Write opperation
 
 	 for(int i=0; i<j; i++){
 		pipe->buffer[pipe->w_position+1]= buf[i];
@@ -189,7 +188,7 @@ int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 		pipe->empty_space--;
 	 }
 
-
+	//wake up all the readers to tell them that there is something to read
 	kernel_broadcast(&(pipe->is_empty));
 
 
