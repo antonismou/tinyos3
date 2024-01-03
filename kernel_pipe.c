@@ -69,11 +69,10 @@ int pipe_reader_close(void* pipe_cb){
 }
 
 int pipe_writer_close(void* pipe_cb){
-	PIPE_CB* pipe = (PIPE_CB*) pipe_cb;
-	if (pipe == NULL){
+	if (pipe_cb == NULL){
 		return -1;
 	}
-
+	PIPE_CB* pipe = (PIPE_CB*) pipe_cb;
 
 	pipe->writer = NULL;
 
@@ -144,7 +143,7 @@ int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 	PIPE_CB* pipe = (PIPE_CB*) pipecb_t;
 
 	/*
-		checks if the pipe is closed or the writer or reader is closed
+		checks if the pipe,writer or reader is closed
 		if one of them is closed returns an error
 	*/
 	if(pipe==NULL||pipe->writer == NULL||pipe->reader==NULL){
@@ -180,11 +179,11 @@ int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 		j = size;
 	 }
 
-	 //Write opperation
+	 //Write operation
 
 	 for(int i=0; i<j; i++){
-		pipe->buffer[pipe->w_position+1]= buf[i];
-		pipe->w_position = (pipe->w_position)%PIPE_BUFFER_SIZE;
+		pipe->buffer[pipe->w_position]= buf[i];
+		pipe->w_position = (pipe->w_position+1)%PIPE_BUFFER_SIZE;
 		pipe->empty_space--;
 	 }
 
