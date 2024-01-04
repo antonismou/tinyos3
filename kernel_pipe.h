@@ -2,8 +2,6 @@
 #include "kernel_dev.h"
 #define PIPE_BUFFER_SIZE 8192
 
-
-
 typedef struct pipe_control_block
 {
   FCB *reader, *writer;
@@ -20,6 +18,6 @@ typedef struct pipe_control_block
 
 int pipe_reader_close(void* pipe_cb);
 int pipe_writer_close(void* pipe_cb);
-int pipe_read();
-int pipe_write(void* index,const char* buf, unsigned int size);
+int pipe_read(void* pipecb_t, char *buf, unsigned int n);
+int pipe_write(void* pipecb_t,const char* buf, unsigned int n);
 int pipe_error();

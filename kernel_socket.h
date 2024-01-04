@@ -43,3 +43,6 @@ typedef struct socket_control_block
     
 
 }SOCKET_CB;
+
+int socket_read(void* socketcb_t, char *buf, unsigned int n);
+int socket_write(void* socketcb_t, char *buf, unsigned int n);
