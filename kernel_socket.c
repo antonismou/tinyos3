@@ -5,15 +5,17 @@
 
 
 file_ops socket_file_ops = {
-	/*
 	.Read = socket_read,
 	.Write = socket_write,
 	.Close = socket_close
-	*/
 };
 
 Fid_t sys_Socket(port_t port)
 {
+	if(port < 0 || port > MAX_PORT){
+		return NOFILE;
+	}
+
 	Fid_t fid;
 	FCB* fcb;
 	if(FCB_reserve(1,&fid,&fcb) == 0){
@@ -54,6 +56,29 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how)
 {
 	return -1;
 }
+
+int socket_close(void* socket){
+	if(socket == NULL){
+		return -1;
+	}
+
+	SOCKET_CB* socket_cb = (SOCKET_CB*) socket;
+
+	if(socket_cb->type == SOCKET_LISTENER){
+
+	}else if (socket_cb->type == SOCKET_PEER){
+		if(!(pipe_reader_close(socket_cb->peer_s.read_pipe) || pipe_writer_close(socket_cb->peer_s.write_pipe))){
+			return -1;
+		}
+		socket_cb->peer_s.peer = NULL;
+	}
+	socket_cb->refcount--;
+
+
+
+	return 0;
+}
+
 
 int socket_read(void* socketcb_t, char *buf, unsigned int n)
 {
@@ -98,4 +123,3 @@ int socket_write(void* socketcb_t, char *buf, unsigned int n)
 
 	return bytesWritten; // Return the result of the pipe_write operation
 }
-

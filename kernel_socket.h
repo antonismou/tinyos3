@@ -3,6 +3,8 @@
 
 typedef struct socket_control_block SOCKET_CB;
 
+SOCKET_CB* PORT_MAP[MAX_PORT]
+
 typedef enum{
     SOCKET_LISTENER,
     SOCKET_UNBOUND,
@@ -44,5 +46,7 @@ typedef struct socket_control_block
 
 }SOCKET_CB;
 
+
+int socket_close(void* socket);
 int socket_read(void* socketcb_t, char *buf, unsigned int n);
 int socket_write(void* socketcb_t, char *buf, unsigned int n);
