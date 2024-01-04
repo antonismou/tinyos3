@@ -144,10 +144,11 @@ int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 	PIPE_CB* pipe = (PIPE_CB*) pipecb_t;
 
 	/*
-		checks if the pipe,writer or reader is closed
-		if one of them is closed returns an error
+		check if the pipe, the writer, the reader 
+		or the destination buffer is closed or invalid.
+        If any of them is closed or invalid, return an error (-1)	
 	*/
-	if(pipe==NULL||pipe->writer == NULL||pipe->reader==NULL){
+	if(pipe==NULL||pipe->writer == NULL||pipe->reader==NULL||buf==NULL){
 		return -1;
 	}
 
@@ -190,8 +191,6 @@ int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
 
 	//wake up all the readers to tell them that there is something to read
 	kernel_broadcast(&(pipe->is_empty));
-
-
 
 	return j;
 }

@@ -54,3 +54,47 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how)
 	return -1;
 }
 
+int socket_read(void* socketcb_t, char *buf, unsigned int n)
+{
+	SOCKET_CB* socket = (SOCKET_CB*) socketcb_t;
+
+	/* Check if the socket or the destination buffer is NULL.
+       If any of them is NULL, return an error (-1) */
+	if(socket==NULL || buf==NULL){
+		return -1;
+	}
+
+	/* Check if the socket type is SOCKET_PEER, and if the peer and read_pipe are not NULL.
+       If any of these conditions is false, return an error (-1) */
+	if (socket->type != SOCKET_PEER || socket->peer_s.peer == NULL || socket->peer_s.read_pipe == NULL){
+		return -1;
+	}
+
+	/* Call the pipe_read function to perform the read operation */
+	int bytesRead = pipe_read(socket->peer_s.read_pipe, buf, n);
+
+	return bytesRead; // Return the result of the pipe_read operation
+}
+
+int socket_write(void* socketcb_t, char *buf, unsigned int n)
+{
+	SOCKET_CB* socket = (SOCKET_CB*) socketcb_t;
+
+	/* Check if the socket or the destination buffer is NULL.
+       If any of them is NULL, return an error (-1) */
+	if(socket==NULL || buf==NULL){
+		return -1;
+	}
+
+	/* Check if the socket type is SOCKET_PEER, and if the peer and write_pipe are not NULL.
+       If any of these conditions is false, return an error (-1) */
+	if (socket->type != SOCKET_PEER || socket->peer_s.peer == NULL || socket->peer_s.write_pipe == NULL){
+		return -1;
+	}
+
+	/* Call the pipe_write function to perform the write operation */
+	int bytesWritten = pipe_write(socket->peer_s.write_pipe, buf, n);
+
+	return bytesWritten; // Return the result of the pipe_write operation
+}
+
