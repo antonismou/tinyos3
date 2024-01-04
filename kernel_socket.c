@@ -102,7 +102,7 @@ int socket_read(void* socketcb_t, char *buf, unsigned int n)
 	return bytesRead; // Return the result of the pipe_read operation
 }
 
-int socket_write(void* socketcb_t, char *buf, unsigned int n)
+int socket_write(void* socketcb_t, const char *buf, unsigned int n)
 {
 	SOCKET_CB* socket = (SOCKET_CB*) socketcb_t;
 
