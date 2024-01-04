@@ -140,59 +140,49 @@ int pipe_read(void* pipecb_t, char *buf, unsigned int n){
 	return numBytesToRead; // Return the number of bytes read
 } 
 
-int pipe_write(void* pipecb_t,const char* buf, unsigned int size){
+int pipe_write(void* pipecb_t,const char* buf, unsigned int n){
 	PIPE_CB* pipe = (PIPE_CB*) pipecb_t;
 
-	/*
-		check if the pipe, the writer, the reader 
-		or the destination buffer is closed or invalid.
-        If any of them is closed or invalid, return an error (-1)	
-	*/
+	/* Check if the pipe, the writer, the reader 
+	   or the destination buffer is closed or invalid.
+       If any of them is closed or invalid, return an error (-1) */
 	if(pipe==NULL||pipe->writer == NULL||pipe->reader==NULL||buf==NULL){
 		return -1;
 	}
 
+	// Get the available free space in the pipe buffer 
 	unsigned int free_space = pipe->empty_space;
 	
-	/*
-		In this while loop as long as the buffer is full and the reader is open
-		we signal the readers to read some data before we can write again
-	*/
+	/* In this while loop as long as the buffer is full and the reader is open
+	   we signal the readers to read some data before we can write again */
 	 while(free_space == 0 && pipe->reader!=NULL){
 		kernel_wait(&pipe->is_full, SCHED_PIPE);
 
-		/*
-			After the reader reads some data the  w_position and r_positiot change
-			so we get a new value for free_space
-		*/
-
+		/* After the reader reads some data the  w_position and r_positiot change
+		   so we get a new value for free_space */
 		free_space = pipe->empty_space;
-
 	 }
 
-	 /*
-	 	if the buffer has empty space let j be this space 
-		else if the buffer is empty let j equal the maximum buffer size 
-	 */
-	 unsigned int j;
-	 if(size>free_space){
-		j = free_space;
+	/* Determine the number of bytes to write based on
+	   available 'free space' in the pipe buffer and requested size 'n' */
+	 unsigned int bytestoWrite;
+	 if(n>free_space){
+		bytestoWrite = free_space;
 	 } else{
-		j = size;
+		bytestoWrite = n;
 	 }
 
-	 //Write operation
-
-	 for(int i=0; i<j; i++){
+	 // Write operation
+	 for(int i=0; i<bytestoWrite; i++){
 		pipe->buffer[pipe->w_position]= buf[i];
 		pipe->w_position = (pipe->w_position+1)%PIPE_BUFFER_SIZE;
 		pipe->empty_space--;
 	 }
 
-	//wake up all the readers to tell them that there is something to read
+	// Wake up all the readers to tell them that there is something to read
 	kernel_broadcast(&(pipe->is_empty));
 
-	return j;
+	return bytestoWrite; // Return the number of bytes written
 }
 
 /*This is used for when one reader try to write or when a writer try to read*/

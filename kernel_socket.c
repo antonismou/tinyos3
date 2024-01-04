@@ -1,6 +1,7 @@
 #include "kernel_socket.h"
 #include "tinyos.h"
 #include "kernel_streams.h"
+#include "kernel_pipe.h"
 
 
 file_ops socket_file_ops = {
