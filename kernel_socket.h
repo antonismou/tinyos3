@@ -3,7 +3,7 @@
 
 typedef struct socket_control_block SOCKET_CB;
 
-SOCKET_CB* PORT_MAP[MAX_PORT];
+SOCKET_CB* PORT_MAP[MAX_PORT]={NULL};
 
 typedef enum{
     SOCKET_LISTENER,
