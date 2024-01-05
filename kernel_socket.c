@@ -95,7 +95,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 
 int sys_ShutDown(Fid_t sock, shutdown_mode how)
 {
-	if(sock == NULL || sock < 0 || sock > MAX_FILEID){
+	if(sock < 0 || sock > MAX_FILEID){
 		return -1;
 	}
 
@@ -129,6 +129,7 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how)
 		//wrong how
 		return -1;
 	}
+	return -1;	//if we are here we had a problem
 }
 
 int socket_close(void* socket){
