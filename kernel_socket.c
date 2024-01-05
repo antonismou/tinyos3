@@ -95,7 +95,40 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 
 int sys_ShutDown(Fid_t sock, shutdown_mode how)
 {
-	return -1;
+	if(sock == NULL || sock < 0 || sock > MAX_FILEID){
+		return -1;
+	}
+
+	FCB* fcb_socket = get_fcb(sock);
+	if(fcb_socket == NULL){
+		return -1;
+	}
+
+	SOCKET_CB* socket = fcb_socket->streamobj;
+	if(socket == NULL || socket->type != SOCKET_PEER ){
+		return -1;
+	}
+	
+	switch (how)
+	{
+	case SHUTDOWN_READ:
+		return pipe_reader_close(socket->peer_s.read_pipe);
+		break;
+	case SHUTDOWN_WRITE:
+		return pipe_writer_close(socket->peer_s.write_pipe);
+		break;
+	case SHUTDOWN_BOTH:
+		if(	!(pipe_reader_close(socket->peer_s.read_pipe)) || 
+			!(pipe_writer_close(socket->peer_s.write_pipe))  
+			)
+		{
+			return -1;
+		}
+		break;
+	default:
+		//wrong how
+		return -1;
+	}
 }
 
 int socket_close(void* socket){
@@ -106,7 +139,9 @@ int socket_close(void* socket){
 	SOCKET_CB* socket_cb = (SOCKET_CB*) socket;
 
 	if(socket_cb->type == SOCKET_LISTENER){
-
+		//code for listener 
+		//EXO KSEXASI NA TO KANO
+		//PREPEI NA GINEI
 	}else if (socket_cb->type == SOCKET_PEER){
 		if(!(pipe_reader_close(socket_cb->peer_s.read_pipe) || pipe_writer_close(socket_cb->peer_s.write_pipe))){
 			return -1;
@@ -114,8 +149,6 @@ int socket_close(void* socket){
 		socket_cb->peer_s.peer = NULL;
 	}
 	socket_cb->refcount--;
-
-
 
 	return 0;
 }
