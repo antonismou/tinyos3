@@ -2561,6 +2561,17 @@ TEST_SUITE(io_tests,
  *
  *********************************************/
 
+TEST_SUITE(socket_tests_connect,
+	"A suite of tests for sockets to connect"
+	)
+{
+	&test_connect_fails_on_bad_fid,
+	&test_connect_fails_on_bad_socket,
+	&test_connect_fails_on_illegal_port,
+	&test_connect_fails_on_non_listened_port,
+	&test_connect_fails_on_timeout,
+	NULL
+};
 
 
 
@@ -2573,6 +2584,7 @@ TEST_SUITE(all_tests,
 	&thread_tests,
 	&pipe_tests,
 	&socket_tests,
+	&socket_tests_connect,
 	NULL
 };
 
