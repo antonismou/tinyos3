@@ -292,6 +292,7 @@ typedef struct file_control_block FCB;		/**< @brief Forward declaration */
 typedef struct process_thread_control_block PTCB; /**< @brief Forward declaration */
 typedef struct pipe_control_block PIPE_CB;
 typedef struct socket_control_block SOCKET_CB;
+typedef struct connection_request CONNECTION_REQUEST;
 
 
 
@@ -314,6 +315,7 @@ typedef struct resource_list_node {
      \endcode
      */
   union {
+	CONNECTION_REQUEST* connection_request;
 	PTCB* ptcb;
     PCB* pcb; 
     TCB* tcb;

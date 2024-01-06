@@ -3,7 +3,7 @@
 
 typedef struct socket_control_block SOCKET_CB;
 
-SOCKET_CB* PORT_MAP[MAX_PORT];
+SOCKET_CB* PORT_MAP[MAX_PORT]={NULL};
 
 typedef enum{
     SOCKET_LISTENER,
@@ -50,3 +50,13 @@ typedef struct socket_control_block
 int socket_close(void* socket);
 int socket_read(void* socketcb_t, char *buf, unsigned int n);
 int socket_write(void* socketcb_t, const char *buf, unsigned int n);
+
+typedef struct connection_request {
+
+  int admitted;
+  SOCKET_CB* peer;
+
+  CondVar connected_cv;
+  rlnode queue_node;
+
+} CONNECTION_REQUEST;

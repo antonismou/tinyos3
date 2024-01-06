@@ -4,6 +4,8 @@
 #include "kernel_pipe.h"
 #include "kernel_sched.h"
 #include "kernel_proc.h"
+#include "kernel_cc.h"
+
 
 
 file_ops socket_file_ops = {
@@ -103,13 +105,87 @@ Fid_t sys_Accept(Fid_t lsock)
 
 int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 {
-	return -1;
+	if (sock < 0 || sock > MAX_FILEID || 	//check if socked is valid
+	port < 0 || port > MAX_PORT ||			//check if port is valid
+	PORT_MAP[port] == NULL || 
+	PORT_MAP[port]->type !=SOCKET_LISTENER)//check if port have listener
+	{
+		return -1;
+	}
+
+	FCB* fcb_socket = get_fcb(sock);
+
+	SOCKET_CB* socket = fcb_socket->streamobj;
+	SOCKET_CB* listener = PORT_MAP[port];
+
+	CONNECTION_REQUEST* request = (CONNECTION_REQUEST*)xmalloc(sizeof(CONNECTION_REQUEST));
+
+	//initialize request
+	request->admitted = 0;
+	request->peer = socket;
+	request->connected_cv = COND_INIT;
+	rlnode_init(&request->queue_node, request);
+
+	//add request to the listener's request queue
+	rlist_push_back(&listener->listener_s.queue, &request->queue_node);
+
+	//signal the listener
+	kernel_signal(&listener->listener_s.req_available);
+	
+	listener->refcount++;
+
+	while (!request->admitted) {
+		int retWait = kernel_timedwait(&request->connected_cv, SCHED_IO, timeout);
+		
+		//request timeout
+		if(!retWait){
+			return -1;
+		}
+	}
+
+	listener->refcount--;
+	
+	return 0;
 }
 
 
 int sys_ShutDown(Fid_t sock, shutdown_mode how)
 {
-	return -1;
+	if(sock < 0 || sock > MAX_FILEID){
+		return -1;
+	}
+
+	FCB* fcb_socket = get_fcb(sock);
+	if(fcb_socket == NULL){
+		return -1;
+	}
+
+	SOCKET_CB* socket = fcb_socket->streamobj;
+	if(socket == NULL || socket->type != SOCKET_PEER ){
+		return -1;
+	}
+	
+	switch (how)
+	{
+	case SHUTDOWN_READ:
+		return pipe_reader_close(socket->peer_s.read_pipe);
+		break;
+	case SHUTDOWN_WRITE:
+		return pipe_writer_close(socket->peer_s.write_pipe);
+		break;
+	case SHUTDOWN_BOTH:
+		if(	!(pipe_reader_close(socket->peer_s.read_pipe)) || 
+			!(pipe_writer_close(socket->peer_s.write_pipe))  
+			)
+		{
+			return -1;
+		}
+		break;
+	default:
+		//wrong how
+		return -1;
+	}
+	return -1;	//if we are here we had a problem
 }
 
 int socket_close(void* socket){
@@ -120,7 +196,9 @@ int socket_close(void* socket){
 	SOCKET_CB* socket_cb = (SOCKET_CB*) socket;
 
 	if(socket_cb->type == SOCKET_LISTENER){
-
+		//code for listener 
+		//EXO KSEXASI NA TO KANO
+		//PREPEI NA GINEI
 	}else if (socket_cb->type == SOCKET_PEER){
 		if(!(pipe_reader_close(socket_cb->peer_s.read_pipe) || pipe_writer_close(socket_cb->peer_s.write_pipe))){
 			return -1;
@@ -128,8 +206,6 @@ int socket_close(void* socket){
 		socket_cb->peer_s.peer = NULL;
 	}
 	socket_cb->refcount--;
-
-
 
 	return 0;
 }
