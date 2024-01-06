@@ -100,10 +100,10 @@ Fid_t sys_Accept(Fid_t lsock)
 		return NOFILE;
 	}
 
-	SOCKET_CB* socket1 = fcb->streamobj;
-	port_t port_s1 = socket1->port;
+	SOCKET_CB* lis_socket1 = fcb->streamobj;
+	port_t port_s1 = lis_socket1->port;
 
-	if(    socket1->type!= SOCKET_LISTENER 
+	if(    lis_socket1->type!= SOCKET_LISTENER 
 		|| port_s1 < 0 || port_s1 > MAX_PORT 
 		|| PORT_MAP[port_s1] == NULL 
 		||( PORT_MAP[port_s1] )->type != SOCKET_LISTENER){
@@ -133,11 +133,11 @@ Fid_t sys_Accept(Fid_t lsock)
 	// MAIN CODE:
 
 	/* Increase refcount */
-	socket1->refcount++;
+	lis_socket1->refcount++;
 
 	/* Wait for a request */
-	while(is_rlist_empty(&socket1->listener_s.queue)){
-		kernel_wait(&socket1->listener_s.req_available, SCHED_PIPE);
+	while(is_rlist_empty(&lis_socket1->listener_s.queue)){
+		kernel_wait(&lis_socket1->listener_s.req_available, SCHED_PIPE);
 			
 		/* Check if the port is still valid */
 		if(PORT_MAP[port_s1] == NULL){
@@ -146,7 +146,7 @@ Fid_t sys_Accept(Fid_t lsock)
 	}
 
 	/* Take the first connection request from the queue and try to honor it */
-	CONNECTION_REQUEST* request = rlist_pop_front(&socket1->listener_s.queue)->connection_request;
+	CONNECTION_REQUEST* request = rlist_pop_front(&lis_socket1->listener_s.queue)->connection_request;
 	request->admitted = 1;
 
 	/* Get socket_cb2 from connection request */
@@ -155,6 +155,8 @@ Fid_t sys_Accept(Fid_t lsock)
 	if(socket2 == NULL){
 		return NOFILE;
 	}
+
+	FCB* fcb_s2 = socket2->fcb; // nomizw de thelei elegxo
 
 	/* Try to construct peer */
 	Fid_t socket3_fid = sys_Socket(port_s1);
@@ -174,17 +176,57 @@ Fid_t sys_Accept(Fid_t lsock)
 	if(socket3 == NULL){
 		return NOFILE;
 	}
-
 	
-	/* Initialize and connect the 2 peers */
+	/* Connect the 2 peers and initialize the connection */
+
+		// ginetai to point metaksy tous mesw tou peer-peer connection?
+	socket2->type = SOCKET_PEER;
+	socket3->type = SOCKET_PEER;
+
+	socket2->peer_s.peer = socket3;
+	socket3->peer_s.peer = socket2;
+
+		// des kwdika gia erwthsh sta fcbs
+	PIPE_CB* pipeWith_s2_asReader = createPipeForAccept(fcb_s2,fcb_s3);
+	PIPE_CB* pipeWith_s3_asReader = createPipeForAccept(fcb_s3,fcb_s2);
+
+	socket2->peer_s.read_pipe = pipeWith_s2_asReader;
+	socket2->peer_s.write_pipe = pipeWith_s3_asReader;
+
+	socket3->peer_s.read_pipe = pipeWith_s3_asReader;
+	socket3->peer_s.write_pipe = pipeWith_s2_asReader;
 
 	/* Signal the Connect side */
 	kernel_signal(&request->connected_cv);
 
 	/* Decrease refcount */
-	socket1->refcount--;
+	lis_socket1->refcount--;
 
 	return NOFILE;
+}
+
+PIPE_CB* createPipeForAccept(FCB* reader, FCB* writer)
+{
+	PIPE_CB* newPipe = (PIPE_CB*)malloc(sizeof(PIPE_CB));
+
+	newPipe->reader = reader;
+	newPipe->writer = writer;
+
+	newPipe->is_empty = COND_INIT;
+	newPipe->is_full = COND_INIT;
+	newPipe->r_position = 0;
+	newPipe->w_position = 0;
+	newPipe->empty_space = PIPE_BUFFER_SIZE;
+
+	/*
+	fcb[0]->streamobj = pipe_cb;
+	fcb[1]->streamobj = pipe_cb;
+	
+	fcb[0]->streamfunc = &pipe_reader;
+	fcb[1]->streamfunc = &pipe_writer;
+	*/
+
+	return newPipe;
 }
 
 
