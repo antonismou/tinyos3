@@ -2,6 +2,7 @@
 #include "tinyos.h"
 #include "kernel_streams.h"
 #include "kernel_pipe.h"
+#include "kernel_sched.h"
 
 
 file_ops socket_file_ops = {
@@ -42,6 +43,31 @@ int sys_Listen(Fid_t sock)
 
 Fid_t sys_Accept(Fid_t lsock)
 {
+	/* Check if the file id is not legal */
+	if(lsock<0 || lsock>=MAX_FILEID){
+		return NOFILE;
+	}
+
+	/* Check if the file id is not initialized by Listen() */
+	FCB* fcb = get_fcb(lsock); 
+	
+	/* no need to check if fcb==NULL because 
+	   that happens only if fid is legal
+	   which we already checked */
+
+	if(fcb->streamobj==NULL || fcb->streamfunc!=&socket_file_ops){
+		return NOFILE;
+	}
+
+	SOCKET_CB* socket = fcb->streamobj;
+
+	if(socket->type!= SOCKET_LISTENER){
+		return NOFILE;
+	} 
+
+	/* The available file ids for the process are exhausted */
+
+
 	return NOFILE;
 }
 
