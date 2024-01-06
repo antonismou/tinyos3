@@ -3,6 +3,7 @@
 #include "kernel_streams.h"
 #include "kernel_pipe.h"
 #include "kernel_sched.h"
+#include "kernel_proc.h"
 
 
 file_ops socket_file_ops = {
@@ -43,12 +44,14 @@ int sys_Listen(Fid_t sock)
 
 Fid_t sys_Accept(Fid_t lsock)
 {
-	/* Check if the file id is not legal */
+	// DO ALL THE INITIAL CHECKS NEEDED:
+
+	/* Check if the file id is not legal and return error */
 	if(lsock<0 || lsock>=MAX_FILEID){
 		return NOFILE;
 	}
 
-	/* Check if the file id is not initialized by Listen() */
+	/* Check if the file id is not initialized by Listen() and return error */
 	FCB* fcb = get_fcb(lsock); 
 	
 	/* no need to check if fcb==NULL because 
@@ -59,13 +62,39 @@ Fid_t sys_Accept(Fid_t lsock)
 		return NOFILE;
 	}
 
-	SOCKET_CB* socket = fcb->streamobj;
+	SOCKET_CB* socket1 = fcb->streamobj;
 
-	if(socket->type!= SOCKET_LISTENER){
+	if(socket1->type!= SOCKET_LISTENER){
 		return NOFILE;
 	} 
 
-	/* The available file ids for the process are exhausted */
+		// thelei elegxo gia ta ports san tin connect?? 
+
+	/* The available file ids for the process are exhausted and return error */
+	PCB* cur = CURPROC;
+
+		// iterate or FCB_RESERVE?
+
+	int fidFoundFlag=0;
+    for(int i=0; i<MAX_FILEID; i++) {
+		if(cur->FIDT[i]==NULL){
+			fidFoundFlag=1;
+			break;
+		}    	
+    }
+
+	if(fidFoundFlag==0){
+		return NOFILE;
+	}
+
+
+	// MAIN CODE:
+
+	/* Increase refcount */
+	socket1->refcount++;
+
+	/* Wait for a request */
+	
 
 
 	return NOFILE;
