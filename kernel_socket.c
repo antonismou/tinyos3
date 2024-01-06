@@ -101,11 +101,15 @@ Fid_t sys_Accept(Fid_t lsock)
 	}
 
 	SOCKET_CB* socket1 = fcb->streamobj;
+	port_t port_s1 = socket1->port;
 
-	if(socket1->type!= SOCKET_LISTENER){
+	if(    socket1->type!= SOCKET_LISTENER 
+		|| port_s1 < 0 || port_s1 > MAX_PORT 
+		|| PORT_MAP[port_s1] == NULL 
+		||( PORT_MAP[port_s1] )->type != SOCKET_LISTENER){
+
 		return NOFILE;
 	} 
-
 		// thelei elegxo gia ta ports san tin connect?? 
 
 	/* The available file ids for the process are exhausted and return error */
@@ -132,8 +136,53 @@ Fid_t sys_Accept(Fid_t lsock)
 	socket1->refcount++;
 
 	/* Wait for a request */
-	
+	while(is_rlist_empty(&socket1->listener_s.queue)){
+		kernel_wait(&socket1->listener_s.req_available, SCHED_PIPE);
+			
+		/* Check if the port is still valid */
+		if(PORT_MAP[port_s1] == NULL){
+			return NOFILE;			
+		}
+	}
 
+	/* Take the first connection request from the queue and try to honor it */
+	CONNECTION_REQUEST* request = rlist_pop_front(&socket1->listener_s.queue)->connection_request;
+	request->admitted = 1;
+
+	/* Get socket_cb2 from connection request */
+	SOCKET_CB* socket2 = request->peer; 
+
+	if(socket2 == NULL){
+		return NOFILE;
+	}
+
+	/* Try to construct peer */
+	Fid_t socket3_fid = sys_Socket(port_s1);
+
+	if(socket3_fid == NOFILE){
+		return NOFILE;
+	}
+
+	FCB* fcb_s3 = get_fcb(socket3_fid);
+
+	if(fcb_s3 == NULL){
+		return NOFILE;
+	}
+
+	SOCKET_CB* socket3 = fcb_s3->streamobj;
+
+	if(socket3 == NULL){
+		return NOFILE;
+	}
+
+	
+	/* Initialize and connect the 2 peers */
+
+	/* Signal the Connect side */
+	kernel_signal(&request->connected_cv);
+
+	/* Decrease refcount */
+	socket1->refcount--;
 
 	return NOFILE;
 }
