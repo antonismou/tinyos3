@@ -33,11 +33,47 @@ Fid_t sys_Socket(port_t port)
 	socket_cb->type = SOCKET_UNBOUND;
 
 	return fid;
-}
+} 
 
 int sys_Listen(Fid_t sock)
 {
-	return -1;
+	/* the file id is not legal*/
+	if(sock<0||sock<MAX_FILEID){
+		return NOFILE;
+	}
+	FCB* fcb = get_fcb(sock);
+
+	if(fcb==NULL){
+		return NOFILE;
+	}
+
+	SOCKET_CB* socket_cb = fcb->streamobj;
+
+	if(socket_cb==NULL){
+		return NOFILE;
+	}
+
+	/*the socket is bound to a port*/
+	if(socket_cb->port!=SOCKET_UNBOUND){
+		return NOFILE;
+	}
+	/*the port is not legal*/
+	if(socket_cb<=0||socket_cb->port>MAX_PORT){
+		return NOFILE;
+	}
+	/*the socket has already been initialized*/
+	if(PORT_MAP[socket_cb->port]!=NULL){
+		return NOFILE;
+	}
+
+	socket_cb->type=SOCKET_LISTENER;
+	socket_cb->listener_s.req_available=COND_INIT;
+	rlnode_init(&(socket_cb->listener_s.queue),NULL);
+
+	PORT_MAP[socket_cb->port] = socket_cb;
+
+
+	return 0;
 }
 
 
@@ -140,9 +176,8 @@ int socket_close(void* socket){
 	SOCKET_CB* socket_cb = (SOCKET_CB*) socket;
 
 	if(socket_cb->type == SOCKET_LISTENER){
-		//code for listener 
-		//EXO KSEXASI NA TO KANO
-		//PREPEI NA GINEI
+		PORT_MAP[socket_cb->port]=NULL;
+		kernel_broadcast(&socket_cb->listener_s.req_available);
 	}else if (socket_cb->type == SOCKET_PEER){
 		if(!(pipe_reader_close(socket_cb->peer_s.read_pipe) || pipe_writer_close(socket_cb->peer_s.write_pipe))){
 			return -1;
