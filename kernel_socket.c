@@ -41,32 +41,32 @@ Fid_t sys_Socket(port_t port)
 int sys_Listen(Fid_t sock)
 {
 	/* the file id is not legal*/
-	if(sock<0||sock<MAX_FILEID){
-		return NOFILE;
+	if(sock<0||sock>MAX_FILEID){
+		return -1;
 	}
 	FCB* fcb = get_fcb(sock);
 
 	if(fcb==NULL){
-		return NOFILE;
+		return -1;
 	}
 
 	SOCKET_CB* socket_cb = fcb->streamobj;
 
 	if(socket_cb==NULL){
-		return NOFILE;
+		return -1;
 	}
 
 	/*the socket is bound to a port*/
-	if(socket_cb->port!=SOCKET_UNBOUND){
-		return NOFILE;
+	if(socket_cb->type != SOCKET_UNBOUND){
+		return -1;
 	}
 	/*the port is not legal*/
-	if(socket_cb<=0||socket_cb->port>MAX_PORT){
-		return NOFILE;
+	if(socket_cb->port <= 0 || socket_cb->port > MAX_PORT){
+		return -1;
 	}
 	/*the socket has already been initialized*/
-	if(PORT_MAP[socket_cb->port]!=NULL){
-		return NOFILE;
+	if(PORT_MAP[socket_cb->port] != NULL){
+		return -1;
 	}
 
 	socket_cb->type=SOCKET_LISTENER;
