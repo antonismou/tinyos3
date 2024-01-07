@@ -159,7 +159,7 @@ Fid_t sys_Accept(Fid_t lsock)
 	FCB* fcb_s2 = socket2->fcb; // nomizw de thelei elegxo
 
 	/* Try to construct peer */
-	Fid_t socket3_fid = sys_Socket(port_s1);
+	Fid_t socket3_fid = sys_Socket(NOPORT);
 
 	if(socket3_fid == NOFILE){
 		return NOFILE;
@@ -232,17 +232,30 @@ PIPE_CB* createPipeForAccept(FCB* reader, FCB* writer)
 
 int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 {
-	if (sock < 0 || sock > MAX_FILEID || 	//check if socked is valid
-	port < 0 || port > MAX_PORT ||			//check if port is valid
-	PORT_MAP[port] == NULL || 
-	PORT_MAP[port]->type !=SOCKET_LISTENER)//check if port have listener
+	if (sock < 0 || sock >= MAX_FILEID )//check if port have listener
 	{
+		return -1;
+	}
+
+	if(port < 0 || port > MAX_PORT){
+		return -1;
+	}
+
+	if(PORT_MAP[port] == NULL ){
+		return -1;
+	}
+
+	if(PORT_MAP[port]->type != SOCKET_LISTENER){
 		return -1;
 	}
 
 	FCB* fcb_socket = get_fcb(sock);
 
 	SOCKET_CB* socket = fcb_socket->streamobj;
+
+	if(socket->type != SOCKET_UNBOUND){
+		return -1;
+	}	
 	SOCKET_CB* listener = PORT_MAP[port];
 
 	CONNECTION_REQUEST* request = (CONNECTION_REQUEST*)xmalloc(sizeof(CONNECTION_REQUEST));
@@ -262,7 +275,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 	listener->refcount++;
 
 	while (!request->admitted) {
-		int retWait = kernel_timedwait(&request->connected_cv, SCHED_IO, timeout);
+		int retWait = kernel_timedwait(&request->connected_cv, SCHED_PIPE, timeout);
 		
 		//request timeout
 		if(!retWait){
