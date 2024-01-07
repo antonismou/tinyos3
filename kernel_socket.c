@@ -92,9 +92,9 @@ Fid_t sys_Accept(Fid_t lsock)
 	/* Check if the file id is not initialized by Listen() and return error */
 	FCB* fcb = get_fcb(lsock); 
 	
-	/* no need to check if fcb==NULL because 
-	   that happens only if fid is legal
-	   which we already checked */
+	if(fcb == NULL){
+		return NOFILE;
+	}
 
 	if(fcb->streamobj==NULL || fcb->streamfunc!=&socket_file_ops){
 		return NOFILE;
@@ -202,7 +202,7 @@ Fid_t sys_Accept(Fid_t lsock)
 	/* Decrease refcount */
 	lis_socket1->refcount--;
 
-	return NOFILE;
+	return socket3_fid;
 }
 
 PIPE_CB* createPipeForAccept(FCB* reader, FCB* writer)
