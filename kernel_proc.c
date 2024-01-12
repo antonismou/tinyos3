@@ -357,10 +357,11 @@ Fid_t sys_OpenInfo()
 int procinfo_read(void* pinfo_cb, char *buf, unsigned int n){
   PROCINFO_CB* pinfo = (PROCINFO_CB*) pinfo_cb;
 
+  pinfo->b_procinfo = (procinfo*)malloc(sizeof(procinfo));
   for(int i = pinfo->pcb_cursor; i < MAX_PROC; i++){
     if(PT[i].pstate != FREE){
       pinfo->b_procinfo->pid = get_pid(&PT[i]);
-      pinfo->b_procinfo->ppid = get_pid(PT[i].parent);
+      pinfo->b_procinfo->ppid = get_pid(&PT[i].parent);
       if(PT[i].pstate == ALIVE){
         pinfo->b_procinfo->alive = 1;
       }else{
@@ -381,9 +382,9 @@ int procinfo_read(void* pinfo_cb, char *buf, unsigned int n){
 
       memcpy(buf, pinfo->b_procinfo, n);
 
-      pinfo->pcb_cursor = i++;
+      pinfo->pcb_cursor = i+1;
 
-      return argl_size;
+      return n;
     }
   }
   //exhausted
