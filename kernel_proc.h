@@ -97,7 +97,16 @@ PCB* get_pcb(Pid_t pid);
   @returns the PID of the process, or NOPROC.
 */
 Pid_t get_pid(PCB* pcb);
+
+typedef struct procinfo_cb
+{
+  procinfo* b_procinfo;
+  int pcb_cursor;
+}PROCINFO_CB;
+
 void start_ptcb_main_thread();
+int procinfo_read(void* pinfo_cb, char *buf, unsigned int n);
+int procinfo_close(void* pinfo_cb);
 /** @} */
 
 #endif
