@@ -330,10 +330,73 @@ void sys_Exit(int exitval)
 
 }
 
-
+file_ops procinfo_ops = {
+  .Read = procinfo_read,
+  .Close = procinfo_close
+};
 
 Fid_t sys_OpenInfo()
 {
-	return NOFILE;
+	Fid_t fid;
+	FCB* fcb;
+	if(FCB_reserve(1,&fid,&fcb) == 0){
+    	return NOFILE;
+	}	
+
+  PROCINFO_CB* pinfo_cb = (PROCINFO_CB*) malloc(sizeof(PROCINFO_CB));
+
+  fcb->streamfunc = &procinfo_ops;
+  fcb->streamobj = pinfo_cb;
+
+  pinfo_cb->b_procinfo=NULL;
+  pinfo_cb->pcb_cursor=0;
+
+  return fid;
+}
+
+int procinfo_read(void* pinfo_cb, char *buf, unsigned int n){
+  PROCINFO_CB* pinfo = (PROCINFO_CB*) pinfo_cb;
+
+  pinfo->b_procinfo = (procinfo*)malloc(sizeof(procinfo));
+  for(int i = pinfo->pcb_cursor; i < MAX_PROC; i++){
+    if(PT[i].pstate != FREE){
+      pinfo->b_procinfo->pid = get_pid(&PT[i]);
+      pinfo->b_procinfo->ppid = get_pid(&PT[i].parent);
+      if(PT[i].pstate == ALIVE){
+        pinfo->b_procinfo->alive = 1;
+      }else{
+        pinfo->b_procinfo->alive = 0;
+      }
+      pinfo->b_procinfo->thread_count = PT[i].thread_count;
+      pinfo->b_procinfo->main_task = PT[i].main_task;
+      pinfo->b_procinfo->argl = PT[i].argl;
+
+      int argl_size;
+      if(PT[i].argl >= PROCINFO_MAX_ARGS_SIZE){
+        argl_size = PROCINFO_MAX_ARGS_SIZE;
+      }else{
+        argl_size =PT[i].argl;
+      }
+
+      memcpy(pinfo->b_procinfo->args, PT[i].args , argl_size);
+
+      memcpy(buf, pinfo->b_procinfo, n);
+
+      pinfo->pcb_cursor = i+1;
+
+      return n;
+    }
+  }
+  //exhausted
+  return -1;
+
+}
+int procinfo_close(void* pinfo_cb){
+  if(pinfo_cb == NULL){
+    return -1;
+  }
+  PROCINFO_CB* pinfo = (PROCINFO_CB* ) pinfo_cb;
+  free(pinfo);
+  return 0;
 }
 
