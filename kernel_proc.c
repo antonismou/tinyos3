@@ -361,7 +361,9 @@ int procinfo_read(void* pinfo_cb, char *buf, unsigned int n){
   for(int i = pinfo->pcb_cursor; i < MAX_PROC; i++){
     if(PT[i].pstate != FREE){
       pinfo->b_procinfo->pid = get_pid(&PT[i]);
-      pinfo->b_procinfo->ppid = get_pid(&PT[i].parent);
+      if(i>1){
+        pinfo->b_procinfo->ppid = get_pid(PT[i].parent);
+      }
       if(PT[i].pstate == ALIVE){
         pinfo->b_procinfo->alive = 1;
       }else{
