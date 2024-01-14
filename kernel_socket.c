@@ -16,12 +16,14 @@ file_ops socket_file_ops = {
 
 Fid_t sys_Socket(port_t port)
 {
+	//check if the port is valid
 	if(port < 0 || port > MAX_PORT){
 		return NOFILE;
 	}
 
 	Fid_t fid;
 	FCB* fcb;
+	//if FIT is full throw error
 	if(FCB_reserve(1,&fid,&fcb) == 0){
     	return NOFILE;
 	}	
@@ -110,12 +112,9 @@ Fid_t sys_Accept(Fid_t lsock)
 
 		return NOFILE;
 	} 
-		// thelei elegxo gia ta ports san tin connect?? 
 
 	/* The available file ids for the process are exhausted and return error */
 	PCB* cur = CURPROC;
-
-		// iterate or FCB_RESERVE?
 
 	int fidFoundFlag=0;
     for(int i=0; i<MAX_FILEID; i++) {
@@ -156,7 +155,7 @@ Fid_t sys_Accept(Fid_t lsock)
 		return NOFILE;
 	}
 
-	FCB* fcb_s2 = socket2->fcb; // nomizw de thelei elegxo
+	FCB* fcb_s2 = socket2->fcb;
 
 	/* Try to construct peer */
 	Fid_t socket3_fid = sys_Socket(NOPORT);
@@ -179,14 +178,12 @@ Fid_t sys_Accept(Fid_t lsock)
 	
 	/* Connect the 2 peers and initialize the connection */
 
-		// ginetai to point metaksy tous mesw tou peer-peer connection?
 	socket2->type = SOCKET_PEER;
 	socket3->type = SOCKET_PEER;
 
 	socket2->peer_s.peer = socket3;
 	socket3->peer_s.peer = socket2;
 
-		// des kwdika gia erwthsh sta fcbs
 	PIPE_CB* pipeWith_s2_asReader = createPipeForAccept(fcb_s2,fcb_s3);
 	PIPE_CB* pipeWith_s3_asReader = createPipeForAccept(fcb_s3,fcb_s2);
 
@@ -218,33 +215,26 @@ PIPE_CB* createPipeForAccept(FCB* reader, FCB* writer)
 	newPipe->w_position = 0;
 	newPipe->empty_space = PIPE_BUFFER_SIZE;
 
-	/*
-	fcb[0]->streamobj = pipe_cb;
-	fcb[1]->streamobj = pipe_cb;
-	
-	fcb[0]->streamfunc = &pipe_reader;
-	fcb[1]->streamfunc = &pipe_writer;
-	*/
-
 	return newPipe;
 }
 
 
 int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 {
-	if (sock < 0 || sock >= MAX_FILEID )//check if port have listener
+	//check if sock is inside the fit
+	if (sock < 0 || sock >= MAX_FILEID )
 	{
 		return -1;
 	}
-
+	//check if port is valid
 	if(port < 0 || port > MAX_PORT){
 		return -1;
 	}
-
+	//check if in the port has a socket
 	if(PORT_MAP[port] == NULL ){
 		return -1;
 	}
-
+	//check if this socket is listener
 	if(PORT_MAP[port]->type != SOCKET_LISTENER){
 		return -1;
 	}
@@ -252,7 +242,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 	FCB* fcb_socket = get_fcb(sock);
 
 	SOCKET_CB* socket = fcb_socket->streamobj;
-
+	//check if the given socket is unbound
 	if(socket->type != SOCKET_UNBOUND){
 		return -1;
 	}	

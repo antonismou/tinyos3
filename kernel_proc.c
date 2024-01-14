@@ -358,10 +358,12 @@ int procinfo_read(void* pinfo_cb, char *buf, unsigned int n){
   PROCINFO_CB* pinfo = (PROCINFO_CB*) pinfo_cb;
 
   pinfo->b_procinfo = (procinfo*)malloc(sizeof(procinfo));
+  /*This loop traverse through PT array with all processes
+  starting from the cursors potision*/
   for(int i = pinfo->pcb_cursor; i < MAX_PROC; i++){
-    if(PT[i].pstate != FREE){
+    if(PT[i].pstate != FREE){ //if the processes is not free take the info
       pinfo->b_procinfo->pid = get_pid(&PT[i]);
-      if(i>1){
+      if(i>1){//the procs with pid 0 and 1 dont have parents
         pinfo->b_procinfo->ppid = get_pid(PT[i].parent);
       }
       if(PT[i].pstate == ALIVE){
@@ -382,8 +384,10 @@ int procinfo_read(void* pinfo_cb, char *buf, unsigned int n){
 
       memcpy(pinfo->b_procinfo->args, PT[i].args , argl_size);
 
+      //add the procinfo struct to the buffer
       memcpy(buf, pinfo->b_procinfo, n);
 
+      //update the cursor potision to the next process
       pinfo->pcb_cursor = i+1;
 
       return n;

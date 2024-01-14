@@ -51,6 +51,7 @@ int sys_Pipe(pipe_t* pipe)
 }
 
 int pipe_reader_close(void* pipe_cb){
+	//check if parameter is empty
 	if(pipe_cb == NULL){
 		return -1;
 	}
@@ -58,7 +59,9 @@ int pipe_reader_close(void* pipe_cb){
 	PIPE_CB* pipe = (PIPE_CB*) pipe_cb;
 
 	pipe->reader = NULL;
-
+	/*if buffer is empty and writer is close
+	free the pipe
+	*/
 	if (pipe->empty_space == PIPE_BUFFER_SIZE && pipe->writer == NULL) {
 		free(pipe->reader);
 		free(pipe->writer);
@@ -69,6 +72,7 @@ int pipe_reader_close(void* pipe_cb){
 }
 
 int pipe_writer_close(void* pipe_cb){
+	//check if parameter is empty
 	if (pipe_cb == NULL){
 		return -1;
 	}
@@ -76,6 +80,9 @@ int pipe_writer_close(void* pipe_cb){
 
 	pipe->writer = NULL;
 
+	/*if reader is empty
+	free the pipe
+	*/
 	if (pipe->reader == NULL) {
 		free(pipe->writer);
 		free(pipe->reader);
