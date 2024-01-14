@@ -136,7 +136,7 @@ Fid_t sys_Accept(Fid_t lsock)
 
 	/* Wait for a request */
 	while(is_rlist_empty(&lis_socket1->listener_s.queue)){
-		kernel_wait(&lis_socket1->listener_s.req_available, SCHED_PIPE);
+		kernel_wait(&lis_socket1->listener_s.req_available, SCHED_IO);
 			
 		/* Check if the port is still valid */
 		if(PORT_MAP[port_s1] == NULL){
@@ -265,7 +265,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 	listener->refcount++;
 
 	while (!request->admitted) {
-		int retWait = kernel_timedwait(&request->connected_cv, SCHED_PIPE, timeout);
+		int retWait = kernel_timedwait(&request->connected_cv, SCHED_IO, timeout);
 		
 		//request timeout
 		if(!retWait){
