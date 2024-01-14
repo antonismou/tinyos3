@@ -2187,24 +2187,26 @@ BOOT_TEST(test_shudown_write,
 
 	return 0;
 }
-
-
-
-
-TEST_SUITE(socket_tests,
-	"A suite of tests for sockets."
-	)
-{
+TEST_SUITE(socket_constructor_tests,
+	"tests for the costructor of the sockets"){
 	&test_socket_constructor_many_per_port,
 	&test_socket_constructor_out_of_fids,
 	&test_socket_constructor_illegal_port,
-	
+	NULL
+	};
+
+TEST_SUITE(socket_listen_tests,
+	"tests for the listen of the sockets"){
 	&test_listen_success,
 	&test_listen_fails_on_bad_fid,
 	&test_listen_fails_on_NOPORT,
 	&test_listen_fails_on_occupied_port,
 	&test_listen_fails_on_initialized_socket,
+	NULL
+	};
 
+TEST_SUITE(socket_accept_tests,
+	"tests for the accept of the sockets"){
 	&test_accept_succeds,
 	&test_accept_fails_on_bad_fid,
 	&test_accept_fails_on_unbound_socket,
@@ -2212,19 +2214,40 @@ TEST_SUITE(socket_tests,
 	&test_accept_reusable,
 	&test_accept_fails_on_exhausted_fid,
 	&test_accept_unblocks_on_close,
+	NULL
+	};
 
+TEST_SUITE(socket_connect_tests,
+	"tests for the connect of the sockets"){
 	&test_connect_fails_on_bad_fid,
 	&test_connect_fails_on_bad_socket,
 	&test_connect_fails_on_illegal_port,
 	&test_connect_fails_on_non_listened_port,
 	&test_connect_fails_on_timeout,
+	NULL
+	};
 
+TEST_SUITE(socket_read_write_tranfer_tests,
+	"tests for the read write tranfer of the sockets"){
 	&test_socket_small_transfer,
 	&test_socket_single_producer,
 	&test_socket_multi_producer,
 
 	&test_shudown_read,
 	&test_shudown_write,
+	NULL
+	};
+
+TEST_SUITE(socket_tests,
+	"A suite of tests for sockets."
+	)
+{
+	&socket_constructor_tests,
+	&socket_listen_tests,
+	&socket_accept_tests,
+	&socket_connect_tests,
+	&socket_read_write_tranfer_tests,
+
 
 	NULL
 };
@@ -2560,7 +2583,6 @@ TEST_SUITE(io_tests,
  *
  *
  *********************************************/
-
 
 
 
